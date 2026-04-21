@@ -51,10 +51,21 @@ class Vocabulary:
     def __str__(self) -> str:
         return str(self.vocab)
 
+    def encode(self, s: str) -> list[int | None]:
+        splitted = split(s)
+        return [
+            self.vocab.get(s)
+            for s in splitted
+        ]
+
+    def decode(self, tokens: list[int | None]) -> str:
+        return ' '.join([
+            self.vocab_list[t] if t is not None else 'None'
+            for t in tokens
+        ])
+
 if __name__ == '__main__':
     voc = Vocabulary('voc.txt')
-    print(voc)
-
     while True:
         try:
             s = input()
@@ -63,6 +74,10 @@ if __name__ == '__main__':
 
         splitted = split(s)
         voc.extend(splitted)
-        print(voc)
+
+        encoded = voc.encode(s)
+        print(encoded)
+        decoded = voc.decode(encoded)
+        print(decoded)
 
     voc.serialize()
