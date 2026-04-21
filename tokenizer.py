@@ -2,6 +2,7 @@
 
 from typing import TextIO
 from collections import OrderedDict
+from sys import argv, stderr
 import re
 
 def split(s: str) -> list[str]:
@@ -64,8 +65,20 @@ class Vocabulary:
             for t in tokens
         ])
 
+def populate(voc: Vocabulary, path: str) -> None:
+    with open(path) as f:
+        for line in f:
+            splitted = split(line.strip())
+            voc.extend(splitted)
+
 if __name__ == '__main__':
     voc = Vocabulary('voc.txt')
+    _, *args = argv
+
+    for arg in args:
+        populate(voc, arg)
+        print('populated', arg, file=stderr)
+
     while True:
         try:
             s = input()
@@ -73,7 +86,6 @@ if __name__ == '__main__':
             break
 
         splitted = split(s)
-        voc.extend(splitted)
 
         encoded = voc.encode(s)
         print(encoded)
