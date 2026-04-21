@@ -4,4 +4,9 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "bpe",
+]
+
+[tool.uv.sources]
+bpe = { git = "https://github.com/soaxelbrooke/python-bpe.git" }
