@@ -36,6 +36,9 @@ class Vocabulary:
     def decode(self, tokens: list[int | None]) -> str:
         return next(self.encoder.inverse_transform([tokens]))
 
+    def vocab_size(self):
+        return self.encoder.vocab_size
+
 def populate(voc: Vocabulary, path: str) -> None:
     with open(path) as f:
         paragraphs = iterate_paragraph(f)
