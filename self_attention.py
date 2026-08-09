@@ -3,7 +3,7 @@
 import torch
 import torch.nn as nn
 
-class SelfAttentention(nn.Module):
+class SelfAttention(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout=0.5, qkv_bias=False):
         super().__init__()
 
@@ -35,8 +35,29 @@ class SelfAttentention(nn.Module):
         alphas = self.dropout(alphas)
         return alphas @ vs
 
+class MultiHeadAttention(nn.Module):
+    def __init__(
+            self,
+            d_in,
+            d_out,
+            context_length,
+            dropout=0.5,
+            qkv_bias=False,
+            num_heads=2
+    ):
+        super().__init__()
+        self.heads = nn.ModuleList(
+            [
+                SelfAttention(d_in, d_out, context_length, dropout, qkv_bias)
+                for _ in range(num_heads)
+            ]
+        )
+
+    def forward(self, x):
+        return torch.cat([head(x) for head in self.heads], dim=-1)
+
 if __name__ == '__main__':
-    torch.manual_seed(789)
+    torch.manual_seed(123)
     inputs = torch.tensor(
         [[0.43, 0.15, 0.89],
          [0.55, 0.87, 0.66],
@@ -49,6 +70,6 @@ if __name__ == '__main__':
 
     batch = torch.stack((inputs, inputs), dim=0)
 
-    sa = SelfAttentention(3, 2, batch.shape[1], dropout=0.0)
+    sa = MultiHeadAttention(3, 2, batch.shape[1], dropout=0.0)
     f = sa(batch)
     print(f)
