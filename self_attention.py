@@ -3,38 +3,6 @@
 import torch
 import torch.nn as nn
 
-class SelfAttention(nn.Module):
-    def __init__(self, d_in, d_out, context_length, dropout=0.5, qkv_bias=False):
-        super().__init__()
-
-        self.d_out = d_out
-
-        self.wq = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.wk = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.wv = nn.Linear(d_in, d_out, bias=qkv_bias)
-        self.dropout = nn.Dropout(dropout)
-
-        self.register_buffer(
-            'mask',
-            torch.triu(torch.ones(context_length, context_length), 1)
-        )
-
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        b, n, d_in = x.shape
-
-        ks = self.wk(x)
-        vs = self.wv(x)
-        qs = self.wq(x)
-
-        omegas = qs @ ks.transpose(1, 2)
-        # mask = torch.triu(torch.ones(omegas.shape), 1).bool()
-        masked = omegas.masked_fill(self.mask.bool()[:n, :n], -torch.inf)
-        alphas = torch.softmax(masked / ks.shape[-1] ** 0.5, dim=-1)
-        alphas = self.dropout(alphas)
-        return alphas @ vs
-
 class MultiHeadAttention(nn.Module):
     def __init__(
             self,
@@ -46,15 +14,39 @@ class MultiHeadAttention(nn.Module):
             num_heads=2
     ):
         super().__init__()
-        self.heads = nn.ModuleList(
-            [
-                SelfAttention(d_in, d_out, context_length, dropout, qkv_bias)
-                for _ in range(num_heads)
-            ]
+
+        if d_out % num_heads != 0:
+            raise ValueError('d_out must be multiple of num_heads')
+
+        self.d_out = d_out
+        self.num_heads = num_heads
+        self.head_dim = d_out // num_heads
+
+        self.wqs = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.wks = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.wvs = nn.Linear(d_in, d_out, bias=qkv_bias)
+        self.dropout = nn.Dropout(dropout)
+        self.out_proj = nn.Linear(d_out, d_out)
+
+        self.register_buffer(
+            'mask',
+            torch.triu(torch.ones(context_length, context_length), 1)
         )
 
     def forward(self, x):
-        return torch.cat([head(x) for head in self.heads], dim=-1)
+        b, n, d_in = x.shape
+            
+        ks = self.wks(x).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        vs = self.wvs(x).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+        qs = self.wqs(x).view(b, n, self.num_heads, self.head_dim).transpose(1, 2)
+
+        omegas = qs @ ks.transpose(2, 3)
+        masked = omegas.masked_fill(self.mask.bool()[:n, :n], -torch.inf)
+        alphas = torch.softmax(masked / ks.shape[-1] ** 0.5, dim=-1)
+        alphas = self.dropout(alphas)
+
+        zs = (alphas @ vs).transpose(1, 2).contiguous().view(b, n, self.d_out)
+        return self.out_proj(zs)
 
 if __name__ == '__main__':
     torch.manual_seed(123)
