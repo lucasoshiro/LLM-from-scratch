@@ -40,7 +40,7 @@ class GPTModel(nn.Module):
         batch_size, n = x.shape
         tok_embs = self.tok_emb(x)
         pos_embs = self.pos_emb(
-            torch.arrange(seq_len, device=x.device)
+            torch.arange(n, device=x.device)
         )
         embs = self.drop_emb(tok_embs + pos_embs)
         transf = self.transf_blocks(embs)
@@ -51,6 +51,10 @@ class GPTModel(nn.Module):
 
 
 if __name__ == '__main__':
+    import tiktoken
+
+    tokenizer = tiktoken.get_encoding('gpt2')
+
     cfg = {
         'vocab_size': 50257,
         'context_length': 1024,
@@ -60,4 +64,16 @@ if __name__ == '__main__':
         'drop_rate': 0.1,
     }
 
+    torch.manual_seed(123)
+
     gpt = GPTModel(cfg)
+
+    txt1 = 'Every effort moves you'
+    txt2 = 'Every day holds a'
+
+    batch = torch.stack([
+        torch.tensor(tokenizer.encode(txt))
+        for txt in [txt1, txt2]
+    ])
+
+    print(gpt(batch).shape)
