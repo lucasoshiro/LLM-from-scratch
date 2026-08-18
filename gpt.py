@@ -13,9 +13,15 @@ class TransformerBlock(nn.Module):
 class LayerNormalization(nn.Module):
     def __init__(self, emb_dim):
         super().__init__()
+        self.eps = 1e-5
+        self.scale = nn.Parameter(torch.ones(emb_dim))
+        self.shift = nn.Parameter(torch.zeros(emb_dim))
 
     def forward(self, x):
-        return x
+        mean = x.mean(dim=-1, keepdim=True)
+        var = x.var(dim=-1, keepdim=True, unbiased=False)
+        norm_x = (x - mean) / torch.sqrt(var + self.eps)
+        return self.scale * norm_x + self.shift
 
 class GPTModel(nn.Module):
     def __init__(self, cfg):
@@ -76,4 +82,14 @@ if __name__ == '__main__':
         for txt in [txt1, txt2]
     ])
 
-    print(gpt(batch).shape)
+    torch.manual_seed(123)
+    batch_example = torch.randn(2, 5)
+    ln = LayerNormalization(emb_dim=5)
+    out_ln = ln(batch_example)
+
+    mean = out_ln.mean(dim=-1, keepdim=True)
+    var = out_ln.var(dim=-1, keepdim=True, unbiased=False) 
+    torch.set_printoptions(sci_mode=False)
+    print(mean, var)
+
+    # print(gpt(batch).shape)
